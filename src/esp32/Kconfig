@@ -20,16 +20,33 @@ config BOARD_DIRECTORY
 choice
     prompt "Processor model"
     config MACH_ESP32_ORIG
-        bool "esp32"
+        bool "ESP32 (Xtensa dual-core 240MHz)"
+    config MACH_ESP32_S2
+        bool "ESP32-S2 (Xtensa single-core 240MHz, USB)"
+    config MACH_ESP32_S3
+        bool "ESP32-S3 (Xtensa dual-core 240MHz, USB)"
+    config MACH_ESP32_C2
+        bool "ESP32-C2 (RISC-V single-core 120MHz)"
+    config MACH_ESP32_C3
+        bool "ESP32-C3 (RISC-V single-core 160MHz, USB)"
+    config MACH_ESP32_C6
+        bool "ESP32-C6 (RISC-V single-core 160MHz, WiFi 6, USB)"
 endchoice
 
 config MCU
     string
-    default "esp32"
+    default "esp32" if MACH_ESP32_ORIG
+    default "esp32s2" if MACH_ESP32_S2
+    default "esp32s3" if MACH_ESP32_S3
+    default "esp32c2" if MACH_ESP32_C2
+    default "esp32c3" if MACH_ESP32_C3
+    default "esp32c6" if MACH_ESP32_C6
 
 config CLOCK_FREQ
     int
-    default 240000000
+    default 240000000 if MACH_ESP32_ORIG || MACH_ESP32_S2 || MACH_ESP32_S3
+    default 120000000 if MACH_ESP32_C2
+    default 160000000 if MACH_ESP32_C3 || MACH_ESP32_C6
 
 config SERIAL
     bool

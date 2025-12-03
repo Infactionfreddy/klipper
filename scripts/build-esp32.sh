@@ -19,6 +19,7 @@ FLASH=false
 MONITOR=false
 PORT=""
 VERBOSE=false
+TARGET=""
 
 for arg in "$@"; do
     case $arg in
@@ -34,16 +35,20 @@ for arg in "$@"; do
         -p=*|--port=*)
             PORT="${arg#*=}"
             ;;
+        -t=*|--target=*)
+            TARGET="${arg#*=}"
+            ;;
         -v|--verbose)
             VERBOSE=true
             ;;
         -h|--help)
-            echo "Usage: $0 [clean] [flash] [monitor] [-p=/dev/ttyUSB0] [-v]"
+            echo "Usage: $0 [clean] [flash] [monitor] [-t=TARGET] [-p=/dev/ttyUSB0] [-v]"
             echo ""
             echo "Options:"
             echo "  clean       Clean build directory vor dem Build"
             echo "  flash       Flash die Firmware nach dem Build"
             echo "  monitor     Öffne Serial Monitor nach dem Flash"
+            echo "  -t, --target Target chip (esp32, esp32s2, esp32s3, esp32c2, esp32c3, esp32c6)"
             echo "  -p, --port  Serial Port (z.B. -p=/dev/ttyUSB0)"
             echo "  -v          Verbose output (zeige alle Build-Logs)"
             echo "  -h, --help  Zeige diese Hilfe"
@@ -51,9 +56,10 @@ for arg in "$@"; do
             echo "Beispiele:"
             echo "  $0                    # Nur Build"
             echo "  $0 clean              # Clean + Build"
+            echo "  $0 -t=esp32c3         # Build für ESP32-C3"
             echo "  $0 flash              # Build + Flash"
             echo "  $0 flash monitor      # Build + Flash + Monitor"
-            echo "  $0 -p=/dev/ttyUSB0 flash monitor"
+            echo "  $0 -t=esp32s3 -p=/dev/ttyUSB0 flash monitor"
             exit 0
             ;;
     esac
@@ -89,10 +95,22 @@ echo -e "${GREEN}✓${NC} Version: $IDF_VERSION"
 # Prüfe Toolchain
 if command -v xtensa-esp32-elf-gcc &> /dev/null; then
     GCC_VERSION=$(xtensa-esp32-elf-gcc --version | head -n1 | awk '{print $2}')
-    echo -e "${GREEN}✓${NC} Toolchain: xtensa-esp32-elf-gcc $GCC_VERSION"
+    echo -e "${GREEN}✓${NC} Toolchain (Xtensa): xtensa-esp32-elf-gcc $GCC_VERSION"
+fi
+if command -v riscv32-esp-elf-gcc &> /dev/null; then
+    GCC_VERSION=$(riscv32-esp-elf-gcc --version | head -n1 | awk '{print $2}')
+    echo -e "${GREEN}✓${NC} Toolchain (RISC-V): riscv32-esp-elf-gcc $GCC_VERSION"
 fi
 
 echo ""
+
+# Set Target falls angegeben
+if [ -n "$TARGET" ]; then
+    echo -e "${BLUE}Setting target to $TARGET...${NC}"
+    idf.py set-target $TARGET
+    echo -e "${GREEN}✓${NC} Target set to $TARGET"
+    echo ""
+fi
 
 # Wechsle ins Projektverzeichnis
 cd "$(dirname "$0")/.."

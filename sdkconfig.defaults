@@ -1,7 +1,20 @@
 # ESP-IDF Project Configuration
+# Common settings for all ESP32 variants
+
+# Flash and partition settings
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y
+
+# FreeRTOS settings
 CONFIG_FREERTOS_HZ=1000
-CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=4096
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# CPU frequency (override per chip if needed)
+# ESP32/S2/S3: 240MHz, C2: 120MHz, C3/C6: 160MHz
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# USB CDC support for chips with native USB (S2, S3, C3, C6)
+# Uncomment when using USB serial:
+# CONFIG_ESP_CONSOLE_USB_CDC=y
+# CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
