@@ -1,0 +1,121 @@
+# Kconfig settings for ESP32 processors
+
+if MACH_ESP32
+
+config BOARD_DIRECTORY
+    string
+    default "esp32"
+
+######################################################################
+# Chip selection
+######################################################################
+
+choice
+    prompt "Processor model"
+    default MACH_ESP32_ORIG
+    config MACH_ESP32_ORIG
+        bool "ESP32 (original)"
+    config MACH_ESP32_S2
+        bool "ESP32-S2"
+    config MACH_ESP32_S3
+        bool "ESP32-S3"
+    config MACH_ESP32_C3
+        bool "ESP32-C3"
+    config MACH_ESP32_C6
+        bool "ESP32-C6"
+endchoice
+
+config MCU
+    string
+    default "esp32" if MACH_ESP32_ORIG
+    default "esp32s2" if MACH_ESP32_S2
+    default "esp32s3" if MACH_ESP32_S3
+    default "esp32c3" if MACH_ESP32_C3
+    default "esp32c6" if MACH_ESP32_C6
+
+config CLOCK_FREQ
+    int
+    default 240000000 if MACH_ESP32_ORIG || MACH_ESP32_S2 || MACH_ESP32_S3
+    default 160000000 if MACH_ESP32_C3 || MACH_ESP32_C6
+
+config FLASH_SIZE
+    hex
+    default 0x400000  # 4MB default
+
+config FLASH_BOOT_ADDRESS
+    hex
+    default 0x00000000
+
+config RAM_START
+    hex
+    default 0x3FFB0000 if MACH_ESP32_ORIG
+    default 0x3FFB0000 if MACH_ESP32_S2
+    default 0x3FC88000 if MACH_ESP32_S3
+    default 0x3FC80000 if MACH_ESP32_C3 || MACH_ESP32_C6
+
+config RAM_SIZE
+    hex
+    default 0x50000 if MACH_ESP32_ORIG  # 320KB
+    default 0x50000 if MACH_ESP32_S2    # 320KB
+    default 0x70000 if MACH_ESP32_S3    # 448KB
+    default 0x50000 if MACH_ESP32_C3    # 320KB
+    default 0x80000 if MACH_ESP32_C6    # 512KB
+
+config STACK_SIZE
+    int
+    default 2048
+
+######################################################################
+# Communication interface
+######################################################################
+
+choice
+    prompt "Communication interface"
+    default ESP32_SERIAL
+    config ESP32_SERIAL
+        bool "Serial (on UART0)"
+    config ESP32_USBSERIAL
+        bool "USB Serial"
+        depends on MACH_ESP32_S2 || MACH_ESP32_S3 || MACH_ESP32_C3 || MACH_ESP32_C6
+endchoice
+
+config SERIAL
+    bool
+    default y
+
+choice
+    prompt "Serial Port" if ESP32_SERIAL
+    depends on ESP32_SERIAL
+    default ESP32_SERIAL_UART0
+    config ESP32_SERIAL_UART0
+        bool "UART0 (GPIO 1 / GPIO 3)"
+    config ESP32_SERIAL_UART1
+        bool "UART1 (GPIO 9 / GPIO 10)"
+    config ESP32_SERIAL_UART2
+        bool "UART2 (GPIO 16 / GPIO 17)"
+        depends on MACH_ESP32_ORIG
+endchoice
+
+config SERIAL_PORT
+    int
+    default 0 if ESP32_SERIAL_UART0
+    default 1 if ESP32_SERIAL_UART1
+    default 2 if ESP32_SERIAL_UART2
+
+######################################################################
+# ESP-IDF specific options
+######################################################################
+
+config ESP_IDF_PATH
+    string "ESP-IDF installation path"
+    default "$HOME/esp/v5.3.1/esp-idf"
+
+######################################################################
+# Pin configuration
+######################################################################
+
+config INITIAL_PINS
+    string "GPIO pins to set at micro-controller startup"
+    default ""
+
+endif
