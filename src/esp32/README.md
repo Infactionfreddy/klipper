@@ -5,16 +5,11 @@ This directory contains the ESP32 microcontroller support for Klipper firmware.
 ## Supported Chips
 
 - **ESP32** (original) - Xtensa dual-core 240MHz
-- **ESP32-S2** - Xtensa single-core 240MHz with native USB
-- **ESP32-S3** - Xtensa dual-core 240MHz with native USB
-- **ESP32-C3** - RISC-V single-core 160MHz
-- **ESP32-C6** - RISC-V single-core 160MHz with WiFi 6
 
 ## Features
 
 - ✅ GPIO support (digital input/output)
 - ✅ UART serial communication
-- ✅ USB serial (on supported chips: S2, S3, C3, C6)
 - ✅ Hardware timers for precise timing
 - ✅ ADC (Analog-to-Digital Converter) - 12-bit resolution with hardware registers
 - ✅ SPI support - Full duplex with configurable clock and mode
@@ -22,56 +17,80 @@ This directory contains the ESP32 microcontroller support for Klipper firmware.
 - ✅ Hardware PWM via LEDC - 13-bit resolution, up to 8 channels
 - ✅ Chip ID reading from eFuse
 - ✅ Watchdog timer - Auto-reset protection with 2-second timeout
+- ✅ IRQ support - Interrupt request handling
 
 ## Prerequisites
 
 ### ESP-IDF Installation
 
-You need to install the ESP-IDF (Espressif IoT Development Framework):
+You need to install the ESP-IDF (Espressif IoT Development Framework) version 5.x:
 
 ```bash
 mkdir -p ~/esp
 cd ~/esp
 git clone --recursive https://github.com/espressif/esp-idf.git
 cd esp-idf
-./install.sh esp32,esp32s2,esp32s3,esp32c3,esp32c6
+git checkout release/v5.3  # or latest stable 5.x version
+./install.sh esp32
 . ./export.sh
+```
+
+**Important:** You need to source the export.sh script in every terminal session where you want to build:
+```bash
+. ~/esp/esp-idf/export.sh
 ```
 
 ### Toolchain
 
-The ESP-IDF installation includes the necessary toolchains:
-- `xtensa-esp32-elf-gcc` for ESP32, ESP32-S2, ESP32-S3
-- `riscv32-esp-elf-gcc` for ESP32-C3, ESP32-C6
+The ESP-IDF installation automatically includes the necessary Xtensa toolchain:
+- `xtensa-esp32-elf-gcc` for ESP32
 
 ## Building Klipper for ESP32
 
-1. Configure the build:
+This project uses ESP-IDF as the build system with CMake integration.
+
+1. **Source the ESP-IDF environment** (required for every terminal session):
+```bash
+. ~/esp/esp-idf/export.sh
+```
+
+2. **Configure the project** (optional, uses defaults from sdkconfig.defaults):
 ```bash
 cd ~/klipper
-make menuconfig
+idf.py menuconfig
 ```
 
-2. In the menu:
-   - Set "Micro-controller Architecture" to "Espressif ESP32"
-   - Select your specific ESP32 variant (ESP32, S2, S3, C3, or C6)
-   - Choose communication interface (Serial or USB Serial)
-   - Configure serial port if using UART
-
-3. Build the firmware:
+3. **Build the firmware**:
 ```bash
-make
+idf.py build
 ```
 
-4. Flash to your ESP32:
+oder 
 ```bash
-make flash PORT=/dev/ttyUSB0
+.script/build-esp32.sh
 ```
 
-Or manually with esptool:
+
+The firmware binary will be created at `build/klipper-esp32.bin`.
+
+4. **Flash to your ESP32**:
+```bash
+idf.py -p /dev/ttyUSB0 flash
+```
+
+Or flash and monitor serial output:
+```bash
+idf.py -p /dev/ttyUSB0 flash monitor
+```
+
+### Manual Flashing
+
+You can also flash manually with esptool:
 ```bash
 esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 460800 \
-    write_flash -z 0x10000 out/klipper.bin
+    write_flash 0x1000 build/bootloader/bootloader.bin \
+    0x8000 build/partition_table/partition-table.bin \
+    0x10000 build/klipper-esp32.bin
 ```
 
 ## Pin Naming
@@ -100,36 +119,42 @@ See `config/generic-esp32.cfg` for a basic configuration template.
 ## Communication Interfaces
 
 ### UART (Default)
-- UART0: GPIO1 (TX), GPIO3 (RX) - default
-- UART1: GPIO9 (TX), GPIO10 (RX)
-- UART2: GPIO16 (TX), GPIO17 (RX) - ESP32 only
-
-### USB Serial
-Available on ESP32-S2, ESP32-S3, ESP32-C3, and ESP32-C6 through native USB peripheral.
+The default serial port configuration uses:
+- **UART0**: GPIO1 (TX), GPIO3 (RX)
+- **Baud rate**: 250000 (configurable in sdkconfig)
 
 ## Current Limitations
 
 This is a production-ready implementation with full hardware support:
-- All peripherals use direct hardware register access
-- No ESP-IDF framework dependency for core functions
-- Optimized for real-time performance
-- WiFi/Bluetooth not supported (Klipper uses serial/USB only)
+- All peripherals use direct hardware register access for optimal performance
+- ESP-IDF framework used for build system and initial setup only
+- Optimized for real-time performance with FreeRTOS
+- Currently supports ESP32 (original) only
+- WiFi/Bluetooth not supported (Klipper uses serial communication only)
 
 ## Development Notes
 
-The implementation follows Klipper's architecture:
-- `Kconfig` - Build configuration options
-- `Makefile` - Build rules
-- `main.c` - Entry point and initialization
+The implementation follows Klipper's architecture with ESP-IDF integration:
+
+### Build System
+- `CMakeLists.txt` - ESP-IDF CMake project configuration
+- `sdkconfig.defaults` - Default ESP-IDF configuration
+- `esp32_component/` - Klipper component for ESP-IDF build system
+
+### Core Source Files (src/esp32/)
+- `Kconfig` - Klipper build configuration options
+- `Makefile` - Legacy build support
+- `main.c` - Entry point and FreeRTOS task initialization
 - `timer.c` - High-resolution timer for scheduling
-- `gpio.c` - GPIO operations
+- `gpio.c` - GPIO operations with hardware register access
 - `serial.c` - UART communication
-- `adc.c` - Analog-to-digital conversion
-- `spi.c` - SPI bus support
-- `i2c.c` - I2C bus support
+- `adc.c` - Analog-to-digital conversion with SAR ADC
+- `spi.c` - SPI bus support with full-duplex mode
+- `i2c.c` - I2C bus master mode support
 - `hard_pwm.c` - Hardware PWM via LEDC with 13-bit resolution
-- `chipid.c` - Unique chip identification
+- `chipid.c` - Unique chip identification from eFuse
 - `watchdog.c` - Hardware watchdog timer with auto-reset
+- `irq.c` - Interrupt request handling
 - `internal.h` - Internal function declarations
 - `esp32.lds.S` - Linker script
 
@@ -141,11 +166,13 @@ All core features are now fully implemented with hardware register access:
 - ✅ Complete I2C master mode with proper timing
 - ✅ Hardware watchdog with auto-reset protection
 - ✅ LEDC PWM with 13-bit resolution
+- ✅ IRQ interrupt handling system
+- ✅ ESP-IDF build system integration
 
 Future enhancements could include:
+- Support for additional ESP32 variants (S2, S3)
 - USB CDC serial implementation for native USB chips
-- Additional chip variants (ESP32-C2, ESP32-H2, etc.)
-- DMA support for high-speed transfers
+- DMA support for high-speed SPI/I2C transfers
 
 ## License
 
