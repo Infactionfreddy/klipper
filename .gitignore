@@ -1,0 +1,13 @@
+out
+*.so
+*.pyc
+.config
+.config.old
+klippy/.version
+
+# ESP32 ESP-IDF Build
+build/
+sdkconfig
+sdkconfig.old
+.vscode/
+main.old/
